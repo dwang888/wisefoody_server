@@ -29,7 +29,7 @@
 		
 			    <Item>
 			      <New class="org.eclipse.jetty.servlet.ServletContextHandler">
-				    <Set name="contextPath">/food</Set>
+				    <Set name="contextPath">/</Set>
 				    <Call name="addServlet">
 				    	<Arg>
 							wd.goodFood.serverSide.GoodFoodServlet
@@ -39,17 +39,6 @@
 				  </New>
 			    </Item>
 			    
-			    <Item>
-			      <New class="org.eclipse.jetty.servlet.ServletContextHandler">
-				    <Set name="contextPath">/restaurant</Set>
-				    <Call name="addServlet">
-				    	<Arg>
-							wd.goodFood.serverSide.GoodFoodRestaurantServlet
-						</Arg>
-				      <Arg>/</Arg>
-				    </Call>
-				  </New>
-			    </Item>
 			    
 			    <Item>
 			      <New class="org.eclipse.jetty.server.handler.DefaultHandler">

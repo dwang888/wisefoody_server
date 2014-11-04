@@ -92,6 +92,19 @@ public class PostProcessor {
 		}		
 	}
 	
+	//traverse business in a list and merge reviews belonging to the same biz
+	public List<Business> mergeDuplicateBiz(List<Business> bizsGroup){
+		if(bizsGroup == null || bizsGroup.size() == 0){
+			return null;
+		}
+		if(bizsGroup.size() == 1){
+			return bizsGroup.get(0);
+		}
+		List<Business> uniqueBizs = new ArrayList<Business>();
+		
+		return null;
+	}
+	
 	public List<Business> removeDuplicateBiz(List<List<Business>> bizsGroup){
 		if(bizsGroup == null || bizsGroup.size() == 0){
 			return null;

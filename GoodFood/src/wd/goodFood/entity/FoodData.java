@@ -7,10 +7,10 @@ import java.util.List;
  * */
 public class FoodData {
 
-	String foodText;
-	int freq;
-	List<ReviewData> reviews;
-	String bizID;//to link to restaurant it belongs to
+	public String foodText;
+	public int freq;
+	public List<ReviewData> reviews;
+	public String bizID;//to link to restaurant it belongs to
 
 	public FoodData(String fText, int freq, List<ReviewData> rs, String bizID){
 		this.foodText = fText;
