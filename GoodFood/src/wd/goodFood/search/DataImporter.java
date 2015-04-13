@@ -41,7 +41,7 @@ public class DataImporter {
 	static final String USER = "lingandcs";
 	static final String PASS = "sduonline";
 	
-	String SELECT_biz = "SELECT * FROM goodfoodDB.goodfood_biz_Google";
+	String SELECT_biz = "SELECT * FROM goodfoodDB.goodfood_biz_FourSquare";
 	TransportClient client;
 	
 	public DataImporter(){
@@ -50,7 +50,7 @@ public class DataImporter {
 		        .build();
 		this.client = new TransportClient(settings);
         
-		client.addTransportAddress(new InetSocketTransportAddress("107.170.18.102", 9300));
+		client.addTransportAddress(new InetSocketTransportAddress("192.241.173.181", 9300));
 	}
 	
 	public List<Business> fetchAllPlacesFromDB2SearchEngine(){
@@ -59,7 +59,6 @@ public class DataImporter {
 		long startTime = System.currentTimeMillis();
 		Connection dbconn = null;
 		PreparedStatement psSelectBiz = null;
-		PreparedStatement psInsertBiz = null;
 		String today = new SimpleDateFormat("yyyyMMdd").format(Calendar.getInstance().getTime());
 
 		
@@ -80,8 +79,10 @@ public class DataImporter {
 			int count = 0;
 			
 			while(rs.next()){
+				
 //				System.out.println("a record");
 				int id = rs.getInt("id");
+				String uuid = rs.getString("uuid");
 				String bizName = rs.getString("bizName");
 				String address = rs.getString("address");
 				String bizSrcID = rs.getString("bizSrcID");
@@ -94,15 +95,17 @@ public class DataImporter {
 				String profileLink = rs.getString("profileLink");
 				String bizWebsite = rs.getString("bizWebsite");
 				int dataSource = rs.getInt("dataSource");
-				Timestamp updateTime = rs.getTimestamp("updateTime");
-				String updateTimeFormatted = new SimpleDateFormat("yyyy-MM-dd").format(updateTime);
+//				Timestamp updateTime = rs.getTimestamp("updateTime");
+				Date currentDate = new Date();
+				String updateTimeFormatted = new SimpleDateFormat("yyyy-MM-dd").format(currentDate);
 //				System.out.println(updateTime);
 //				System.out.println(new SimpleDateFormat("yyyy-MM-dd").format(updateTime));
 				
 				
 				XContentBuilder builder = jsonBuilder()
 					    .startObject()
-					        .field("id", id + 625187)
+//					        .field("id", id + 625187)//should be unique
+					        .field("id", uuid)
 					        .field("address", address)			        
 					        .field("bizName", bizName)				      
 					        .field("bizSrcID", bizSrcID)
@@ -117,8 +120,8 @@ public class DataImporter {
 					        .field("updateTime", updateTimeFormatted)				        
 					    .endObject();
 				String json = builder.string();
-				System.out.println(json);				
-				IndexResponse response = client.prepareIndex("goodfood", "goodfood_biz", String.valueOf(id+625187))
+//				System.out.println(json);
+				IndexResponse response = client.prepareIndex("wisefoody", "restaurant", uuid)
 				        .setSource(json)
 				        .execute()
 				        .actionGet();
@@ -147,7 +150,6 @@ public class DataImporter {
 		} finally {
 			DBConnector.close(dbconn);
 			DBConnector.close(psSelectBiz);
-			DBConnector.close(psInsertBiz);
 			
 			client.close();
 		}		
@@ -165,9 +167,12 @@ public class DataImporter {
 		// TODO Auto-generated method stub
 		System.out.println("Hello World");
 		DataImporter tester = new DataImporter();
-//		tester.getFromES();
-//		tester.indexDoc();
 		tester.fetchAllPlacesFromDB2SearchEngine();
+//		Client client = new TransportClient()
+//        .addTransportAddress(new InetSocketTransportAddress("192.241.173.181", 9300)
+//        );
+//		System.out.println(client.toString());
+//		client.close();
 	}
 
 }

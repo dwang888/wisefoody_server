@@ -49,7 +49,7 @@ public class DB2SearchEngineUpdater {
 	
 	static final String JDBC_DRIVER = "com.mysql.jdbc.Driver";  
 	static final String DB_URL = "jdbc:mysql://192.241.173.181:3306";
-	String urlES = "http://107.170.18.102:9200/goodfood/goodfood_biz/_search";
+	String urlES = "http://192.241.173.181:9200/wisefoody/_search";
 	   //  Database credentials
 	static final String USER = "lingandcs";
 	static final String PASS = "sduonline";
@@ -64,11 +64,11 @@ public class DB2SearchEngineUpdater {
 	public DB2SearchEngineUpdater(){
 		config = new Configuration("etc/goodfood.properties");
 		Settings settings = ImmutableSettings.settingsBuilder()
-		        .put("cluster.name", "ES_cluster_dishesmap")
+		        .put("cluster.name", "elasticsearch")
 		        .build();
 		this.client = new TransportClient(settings);
         
-		client.addTransportAddress(new InetSocketTransportAddress("107.170.18.102", 9300));
+		client.addTransportAddress(new InetSocketTransportAddress("192.241.173.181", 9300));
 	}
 	
 	public List<Business> fetchAllPlacesFromDB(){

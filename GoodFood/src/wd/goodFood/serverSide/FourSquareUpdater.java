@@ -11,6 +11,7 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLConnection;
 import java.sql.Connection;
+import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -21,6 +22,7 @@ import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
 import java.util.Map.Entry;
+import java.util.zip.CRC32;
 import java.util.Set;
 
 import org.apache.commons.lang.StringEscapeUtils;
@@ -39,7 +41,7 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.google.gson.stream.JsonReader;
 
-public class FourSquareInfoProcessor extends DataSourceProcessor{
+public class FourSquareUpdater extends DataSourceProcessor{
 	private Configuration config;
 	private static int numBusiness;//how many business results should be returned per request.
 	private String apiPrefixPlace;	
@@ -49,22 +51,25 @@ public class FourSquareInfoProcessor extends DataSourceProcessor{
 	private JsonParser jsonParser;//should be thread safe
 	private GoodFoodFinder finder;
 	private String dbTableName = "goodfood_biz_FourSquare";
+	private Connection dbconn = null;
 	
 	String INSERT_biz = "INSERT INTO goodfoodDB.goodfood_biz_FourSquare "
 			+ "(bizName, address, bizSrcID, latitude, longitude, phoneNum, merchantMsg, offer, numReviews, profileLink, bizWebsite, dataSource, updateTime, category) VALUES"
 			+ "(?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
 	
 	String INSERT_reviews = "INSERT INTO goodfoodDB.goodfood_reviews_FourSquare "
-			+ "(bizID, bizSrcID, text, rLink, taggedText, food, dataSource, insertTime, updateTime) VALUES"
-			+ "(?,?,?,?,?,?,?,?,?)";
+			+ "(bizID, bizSrcID, text, rLink, taggedText, food, dataSource, insertTime, updateTime, checksum) VALUES"
+			+ "(?,?,?,?,?,?,?,?,?,?)";
 	
 	String SELECT_biz = "SELECT * FROM goodfoodDB.goodfood_biz_FourSquare WHERE bizSrcID = ? AND dataSource = ?";
 		
-	String SELECT_reviews = "SELECT text,rLink,taggedText,food,dataSource,insertTime FROM goodfoodDB.goodfood_reviews_FourSquare WHERE bizSrcID = ? AND dataSource = ?";
+	String SELECT_reviews = "SELECT text,rLink,taggedText,food,dataSource,insertTime,checksum FROM goodfoodDB.goodfood_reviews_FourSquare WHERE bizSrcID = ? AND dataSource = ?";
+	String SELECT_reviewsChecksum = "SELECT checksum FROM goodfoodDB.goodfood_reviews_FourSquare WHERE bizSrcID = ? AND checksum = ?";
+	
 	String DELETE_reviews = "DELETE FROM goodfoodDB.goodfood_reviews_FourSquare WHERE bizSrcID = ? AND dataSource = ?";
 	
 	
-	public  FourSquareInfoProcessor(String configFile, GoodFoodFinder finder) throws Exception{
+	public  FourSquareUpdater(String configFile, GoodFoodFinder finder) throws Exception{
 		config = new Configuration(configFile);
 		this.setFinder(finder);
 		this.numBusiness = Integer.parseInt(config.getValue("numBusiness_FourSquare"));
@@ -72,18 +77,48 @@ public class FourSquareInfoProcessor extends DataSourceProcessor{
 		this.apiPrefixReview = config.getValue("apiPrefixReview_FourSquare");
 		this.apiSurfixReview = config.getValue("apiSurfixReview_FourSquare");
 		this.setJsonParser(new JsonParser());
+		String JDBC_DRIVER = "com.mysql.jdbc.Driver";  
+		String DB_URL = "jdbc:mysql://192.241.173.181:3306/goodfoodDB";
+		String USER = "lingandcs";
+		String PASS = "sduonline";
+		try {
+			Class.forName("com.mysql.jdbc.Driver");
+			this.dbconn = DriverManager.getConnection(DB_URL,USER,PASS);
+			System.out.println("Connecting to database is built!");
+		} catch (ClassNotFoundException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (SQLException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 	}
 
-	@Deprecated
-	public  FourSquareInfoProcessor(String configFile) throws Exception{
+	
+	public  FourSquareUpdater(String configFile) throws Exception{
 		config = new Configuration(configFile);
 		this.numBusiness = Integer.parseInt(config.getValue("numBusiness_FourSquare"));
 		this.apiPrefixPlace = config.getValue("apiPrefixPlace_FourSquare");
 		this.apiPrefixReview = config.getValue("apiPrefixReview_FourSquare");
 		this.apiSurfixReview = config.getValue("apiSurfixReview_FourSquare");
 		this.setJsonParser(new JsonParser());
-		this.setFinder(new GoodFoodFinder(config.getValue("sentSplitterPath"), config.getValue("tokenizerPath"), config.getValue("NETaggerPath")));
-		
+//		this.setFinder(new GoodFoodFinder(config.getValue("sentSplitterPath"), config.getValue("tokenizerPath"), config.getValue("NETaggerPath")));
+		this.setFinder(new GoodFoodFinder(config.getValue("NETaggerPath")));
+		String JDBC_DRIVER = "com.mysql.jdbc.Driver";  
+		String DB_URL = "jdbc:mysql://192.241.173.181:3306/goodfoodDB";
+		String USER = "lingandcs";
+		String PASS = "sduonline";
+		try {
+			Class.forName("com.mysql.jdbc.Driver");
+			this.dbconn = DriverManager.getConnection(DB_URL,USER,PASS);
+			System.out.println("Connecting to database is built!");
+		} catch (ClassNotFoundException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (SQLException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 	}	
 	
 	/**
@@ -213,9 +248,10 @@ public class FourSquareInfoProcessor extends DataSourceProcessor{
 				JsonObject loc = (JsonObject)location;
 				Business biz = new Business();
 				this.addInfo2Biz(loc, biz);
-//				if(!this.isBizInDB(biz, dbconn, psSelectBiz)){
-//					this.addBiz2DB(biz, dbconn, psInsertBiz);
-//				}
+				if(!this.isBizInDB(biz, dbconn, psSelectBiz)){
+					this.addBiz2DB(biz, dbconn, psInsertBiz);
+//					System.out.println(biz.getBusiness_name());
+				}
 				bizs.add(biz);
 			}			
 			
@@ -226,7 +262,7 @@ public class FourSquareInfoProcessor extends DataSourceProcessor{
 		} catch (SQLException e) {
 			e.printStackTrace();
 		} finally {
-			DBConnector.close(dbconn);
+//			DBConnector.close(dbconn);
 			DBConnector.close(psSelectBiz);
 			DBConnector.close(psInsertBiz);
 			
@@ -309,51 +345,133 @@ public class FourSquareInfoProcessor extends DataSourceProcessor{
 	 * */
 //	public synchronized List<Business> fetchReviews(List<Business> bizs){
 	public List<Business> fetchReviews(List<Business> bizs){
-		System.out.println(bizs.size() + "\t bizs fetched!");
-		Connection dbconn = null;
 		PreparedStatement psSelectReview = null;
 		PreparedStatement psLookupReview = null;
 		PreparedStatement psInsertReview = null;
-//		PreparedStatement psDeleteReview = null;
+		PreparedStatement psSelectReviewChecksum = null;
 		long start;
 		long end;
 		try {
-			dbconn = GoodFoodServlet.DS.getConnection();
+//			dbconn = GoodFoodServlet.DS.getConnection();			
 			psSelectReview = dbconn.prepareStatement(this.SELECT_reviews);
+			psSelectReviewChecksum = dbconn.prepareStatement(this.SELECT_reviewsChecksum);
 //			psLookupReview = dbconn.prepareStatement(this.Lookup_reviews);
 			psInsertReview = dbconn.prepareStatement(this.INSERT_reviews);
-//			psDeleteReview = dbconn.prepareStatement(this.DELETE_reviews);
-			
+
 			for(Business biz : bizs){
+				Thread.sleep(1000);
 				start = System.currentTimeMillis();
-				boolean flag = this.isInReviewTable(biz, dbconn, psSelectReview);
+				biz = this.fetchReviewsFromAPI(biz);
+				boolean flagInDB = this.isInReviewTable(biz, dbconn, psSelectReview);				
+				biz = this.fetchReviewsFromAPI(biz);
+				if(biz.getReviews().size() != 0){
+						this.addReviews2DB(biz, dbconn, psInsertReview, psSelectReviewChecksum);//add to cache
+						end = System.currentTimeMillis();
+						
+				}
 				end = System.currentTimeMillis();
-				if(flag == true){
-					start = System.currentTimeMillis();
-					fetchReviewsFromDB(biz, dbconn, psSelectReview);//read cache
-					end = System.currentTimeMillis();
-//					System.out.println("fetch reviews from DB:\t" + (end - start));
-				}else{
-					//no records in DB
-					start = System.currentTimeMillis();
-					this.fetchReviewsFromAPI(biz);
-//					this.addReviews2DB(biz, dbconn, psInsertReview);//add to cache
-					end = System.currentTimeMillis();
-//					System.out.println("fetch reviews from API:\t" + (end - start));
-				}			
+//				System.out.println("fetch reviews from APIIII:\t" + (end - start));
 			}
+			
 		} catch (SQLException e) {
 			e.printStackTrace();
+		} catch (InterruptedException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
 		}  finally {
-			DBConnector.close(dbconn);
+//			DBConnector.close(dbconn);
 			DBConnector.close(psSelectReview);
 			DBConnector.close(psInsertReview);
 			DBConnector.close(psLookupReview);
-		}		
-		
+		}
 		return bizs;
 	}
 	
+	public boolean isReviewInDB(Business biz, String rText, PreparedStatement ps){
+		Boolean inTable = false;
+		ResultSet rs = null;
+//		long checkSum = crc.getValue();
+		try {			
+//			conn = GoodFoodServlet.ds.getConnection();
+//			ps = conn.prepareStatement(this.SELECT_reviews);
+			ps.setString(1, biz.getBusiness_id());
+			CRC32 crc = new CRC32();
+			crc.update(rText.getBytes());
+			ps.setLong(2, crc.getValue());
+//			ps.setLong(2, 4149384845);
+			rs = ps.executeQuery();
+			inTable = rs.isAfterLast() == rs.isBeforeFirst()? false : true;
+//			System.out.println(biz.getBusiness_id() + "---||---" + crc.getValue() + "||" + rText);
+			if(inTable == true){
+//				System.out.println("|||||||| in DB:");
+//				System.out.println(biz.getBusiness_id() + "||" + crc.getValue() + "||" + rText);
+			}else{
+//				System.out.println("XXXXXXXX notin DB:");
+//				System.out.println(biz.getBusiness_id() + "|XX|" + crc.getValue() + "|XX|" + rText);
+			}
+		} catch (SQLException e) {
+			e.printStackTrace();
+		} finally {
+			DBConnector.close(rs);
+//			close(ps);
+//			close(conn);
+		}
+		return inTable;
+	}
+	
+	/**
+	 * store business reviews to DB, as cache
+	 * */
+	public void addReviews2DB(Business biz, Connection conn, PreparedStatement ps, PreparedStatement psSelectReviewChecksum){
+//		System.out.println(biz.getBusiness_id());
+//		Connection conn = null;
+//		PreparedStatement ps =null;	
+		int numIn = 0;
+		int numNotIn = 0;
+		
+		try {
+//			conn = GoodFoodServlet.ds.getConnection();
+//			ps = conn.prepareStatement(this.INSERT_reviews);
+			List<Review> reviews = biz.getReviews();
+			if(reviews == null || reviews.size() == 0){
+				return;
+			}
+//			System.out.println(reviews.size());
+			for(Review r : reviews){
+				boolean inDB = isReviewInDB(biz, r.getReviewStr(), psSelectReviewChecksum);
+				if(inDB == false){
+					ps.setInt(1, 0);//how to get biz id?
+					ps.setString(2, biz.getBusiness_id());
+					ps.setString(3, r.getReviewStr());
+					ps.setString(4, r.getWebLink());
+					ps.setString(5, r.getTaggedStr());//later, will be not null
+					ps.setString(6, r.getNEStr());//later, will be not null
+					ps.setInt(7, r.getDataSource());
+					ps.setTimestamp(8, new Timestamp(System.currentTimeMillis()));
+					ps.setTimestamp(9, new Timestamp(System.currentTimeMillis()));
+					CRC32 crc = new CRC32();
+					crc.update(r.getReviewStr().getBytes());
+//					System.out.println("checksum value!!!" + (int) crc.getValue() + "|--|" +crc.getValue());
+					ps.setLong(10, crc.getValue());		
+					ps.execute();
+//					System.out.println("++++++++++++++++++++++++++");
+//					System.out.println("inserting a review++++++++");
+//					System.out.println(r.getReviewStr());
+					numNotIn++;
+				}else{
+					numIn++;
+				}				
+			}
+//			System.out.println("In and Not In:\t" + numIn + "<--->" + numNotIn);
+		} catch (SQLException e) {
+			e.printStackTrace();
+		} finally{
+//			close(ps);
+//			close(conn);
+		}		
+	}
+	
+	//fetch reviews from API and add them to biz class
 	public Business fetchReviewsFromAPI(Business biz){
 		long startTime = System.currentTimeMillis();
 		String id = biz.getBusiness_id();
@@ -394,6 +512,7 @@ public class FourSquareInfoProcessor extends DataSourceProcessor{
 					String rLink = robj.get("canonicalUrl").getAsString().trim();
 					
 					long start = System.currentTimeMillis();
+//					System.out.println("-----\n" + rStr);
 					Review r = this.getFinder().process(rStr);//call NLP tools
 					long end = System.currentTimeMillis();
 					r.setWebLink(rLink);
@@ -422,79 +541,13 @@ public class FourSquareInfoProcessor extends DataSourceProcessor{
 	}	
 	
 	/**
-	 * delete expired reviews; now 30 days
-	 * */
-	public void deleteReviewsFromDB(Business biz, Connection conn, PreparedStatement ps){
-		String bizSrcID = biz.getBusiness_id();
-		try {
-			ps.setString(1, bizSrcID);
-			ps.setInt(2, 2);//TODO: hardcode?
-			ps.executeUpdate();
-		} catch (SQLException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}		
-	}
-	
-	/**
-	 * no ML or NLP operation here
-	 * only DB IO
-	 * */
-	public Business fetchReviewsFromDB(Business biz, Connection conn, PreparedStatement ps){
-		String rStr;
-		String rLink;
-		String NEStr;
-		String taggedText;
-		long time = 0;
-		int length = 0;
-		ResultSet rs = null;		
-//		System.out.println(biz.getBusiness_name());
-		try {
-			long startTime = System.currentTimeMillis();
-			ps.setString(1, biz.getBusiness_id());
-			ps.setInt(2, 2);//data source TODO: hardcode?
-			rs = ps.executeQuery();
-			while(rs.next()){
-				long start = System.currentTimeMillis();
-//				rStr = rs.getString("text");
-				rStr = rs.getString("text") + " (@ via FourSquare)";//subject to change
-//				System.out.println("--DB-----:\t" + rStr);
-				rLink = rs.getString("rLink");
-				NEStr = rs.getString("food");
-				taggedText = rs.getString("taggedText");				
-				Review r = new Review(rStr, taggedText, NEStr);
-								
-//				System.out.println("Generate a review:\t" + ( endTime - startTime));
-				r.setWebLink(rLink);
-				r.setDataSource(rs.getInt("dataSource"));
-				biz.getReviews().add(r);
-				long end = System.currentTimeMillis();		
-				time += (end-start);
-				length += rStr.length();
-			}
-			long endTime = System.currentTimeMillis();
-//			System.out.println("------------------------------------------------>");
-//			System.out.println("length of review:\t" + length);
-//			System.out.println("NER from DB time:\t" + time);
-//			System.out.println("fetch reviews from DB:\t" + (endTime - startTime));
-		} catch (SQLException e) {
-			e.printStackTrace();
-		} finally {
-			DBConnector.close(rs);
-//			close(ps);
-//			close(conn);
-		}
-		return biz;
-	}
-	
-	/**
 	 * to fetch restaurants info and update DB
 	 * */
 	public List<Business> updatePlaces(String lat, String lon){
 		//use json here; an xml based version may be needed
 //		System.out.println(lat);
 		long startTime = System.currentTimeMillis();
-		Connection dbconn = null;
+//		Connection dbconn = null;
 		PreparedStatement psSelectBiz = null;
 		PreparedStatement psInsertBiz = null;
 		String apiStr = this.getApiPrefixPlace() + "&ll=" + lat + "," + lon + "&categoryId=4d4b7105d754a06374d81259";//TODO: sharp the category tree
@@ -505,7 +558,8 @@ public class FourSquareInfoProcessor extends DataSourceProcessor{
 //		System.out.println("fetching PLACEs from:\t");
 //		System.out.println(apiStr);		
 		try {
-			dbconn = GoodFoodServlet.DS.getConnection();
+//			dbconn = GoodFoodUpdateServlet.DS.getConnection();
+
 			psSelectBiz = dbconn.prepareStatement(this.SELECT_biz);
 //			psSelectBiz = null;
 			psInsertBiz = dbconn.prepareStatement(this.INSERT_biz);
@@ -537,17 +591,17 @@ public class FourSquareInfoProcessor extends DataSourceProcessor{
 //			JsonArray groups = jobj.getAsJsonObject("response").getAsJsonArray("groups");
 //			JsonArray locations = groups.get(0).getAsJsonObject().getAsJsonArray("items");
 			JsonArray locations = jobj.getAsJsonObject("response").getAsJsonArray("venues");
-			System.out.println("number of locations:\t" + locations.size());
+//			System.out.format("locations around %s %s is %d \n", lat, lon, locations.size());
 			
 			for(JsonElement location : locations){
 				JsonObject loc = (JsonObject)location;
 				Business biz = new Business();
 				this.addInfo2Biz(loc, biz);
-//				if(!this.isBizInDB(biz, dbconn, psSelectBiz)){
-//					this.addBiz2DB(biz, dbconn, psInsertBiz);
-//				}
+				if(!this.isBizInDB(biz, dbconn, psSelectBiz)){
+					this.addBiz2DB(biz, dbconn, psInsertBiz);
+				}
 				bizs.add(biz);
-				System.out.println(biz.getBusiness_name() + "||" + biz.getBusiness_address());
+//				System.out.println("added\t" + " || " + biz.getBusiness_name());
 			}			
 			
 		} catch (MalformedURLException e) {
@@ -557,7 +611,7 @@ public class FourSquareInfoProcessor extends DataSourceProcessor{
 		} catch (SQLException e) {
 			e.printStackTrace();
 		} finally {
-			DBConnector.close(dbconn);
+//			DBConnector.close(dbconn);
 			DBConnector.close(psSelectBiz);
 			DBConnector.close(psInsertBiz);
 			
@@ -580,7 +634,7 @@ public class FourSquareInfoProcessor extends DataSourceProcessor{
 	}
 
 	public static void setNumBusiness(int numBusiness) {
-		FourSquareInfoProcessor.numBusiness = numBusiness;
+		FourSquareUpdater.numBusiness = numBusiness;
 	}
 
 
@@ -646,29 +700,20 @@ public class FourSquareInfoProcessor extends DataSourceProcessor{
 			System.out.println("no property file input!!!");
 			System.exit(0);
 		}
-		FourSquareInfoProcessor processor = null;
+		FourSquareUpdater processor = null;
 		try {
 //			processor = new FourSquareInfoProcessor(args[0]);
-			processor = new FourSquareInfoProcessor(args[0]);
+			processor = new FourSquareUpdater(args[0]);
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
-		System.out.println(processor.apiSurfixReview);
+//		System.out.println(processor.apiSurfixReview);
 //		processor.clearHistoryData();
-		String lat = "40.669800";
-		String lon = "-73.943849";
-		List<Business> bizs = processor.updatePlaces(lat, lon);
-		
+		String lat = "33.9388100309";
+		String lon = "-118.402768344";
+		List<Business> bizs = processor.updatePlaces(lat, lon);		
 		bizs = processor.fetchReviews(bizs);
-//		System.exit(0);
-		for(Business biz : bizs){
-//			System.out.println(biz.getBusiness_address());
-			biz.extractInfoFromReviews();
-			for(Food f : biz.getGoodFoods()){
-				System.out.print(f.getFoodText() + "\t");
-			}
-//			System.out.println(biz.getGoodFoods().size());
-		}
+
 	}
 
 }

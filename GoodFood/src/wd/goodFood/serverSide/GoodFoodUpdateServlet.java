@@ -17,27 +17,17 @@ import org.apache.commons.dbcp.BasicDataSource;
 import wd.goodFood.utils.Configuration;
 //import wd.goodFood.utils.DBConnector;
 
-public class GoodFoodServlet extends HttpServlet {
+public class GoodFoodUpdateServlet extends HttpServlet {
 	private Configuration config;
-	private RequestProcessor processor;
+	private UpdateProcessor processor;
 //	private String pathConfig = "etc/goodfood.properties";
 	private String pathConfig = GoodFoodXMLServer.pathServletConfig;
     private static final long serialVersionUID = 4L;
-    public static final Logger logger = Logger.getLogger(GoodFoodServlet.class.getName());
+    public static final Logger logger = Logger.getLogger(GoodFoodUpdateServlet.class.getName());
     public static InitialContext IC;
     public static BasicDataSource DS;
     
-//	public GoodFoodServlet() throws Exception{		
-//		this.config = new Configuration(pathConfig);
-//		handler = new RequestProcessor(pathConfig);
-//	}
-//
-//	public GoodFoodServlet(String pathConfig) throws Exception{
-//		this.pathConfig = pathConfig;
-//		this.config = new Configuration(pathConfig);
-//		handler = new RequestProcessor(pathConfig);
-//		
-//	}
+
     
 	@Override
 	public void init(){
@@ -46,7 +36,7 @@ public class GoodFoodServlet extends HttpServlet {
 			this.config = new Configuration(pathConfig);
 			IC = new InitialContext();
 			DS = (BasicDataSource)IC.lookup("jdbc/DSDB");
-			this.processor = new RequestProcessor(pathConfig);		
+			this.processor = new UpdateProcessor(pathConfig);		
 		} catch (NamingException e) {
 			logger.info("Can't find the naming resource -> DB pooling!!!");
 			e.printStackTrace();

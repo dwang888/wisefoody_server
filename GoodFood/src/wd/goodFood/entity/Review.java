@@ -12,6 +12,7 @@ import opennlp.tools.util.Span;
  * */
 public class Review {
 
+	int rID;
 	String reviewStr;
 	String taggedStr;
 	String NEStr;
@@ -39,6 +40,13 @@ public class Review {
 	 * a constructor to generate instance from DB tagged record
 	 * */
 	public Review(String rStr, String taggedText, String NEStr){
+		this.reviewStr = rStr;
+		this.taggedStr = taggedText;
+		this.NEStr = NEStr;
+	}
+	
+	public Review(int rID, String rStr, String taggedText, String NEStr){
+		this.rID = rID;
 		this.reviewStr = rStr;
 		this.taggedStr = taggedText;
 		this.NEStr = NEStr;
@@ -220,6 +228,14 @@ public class Review {
 	}
 	
 	
+
+	public final int getrID() {
+		return rID;
+	}
+
+	public final void setrID(int rID) {
+		this.rID = rID;
+	}
 
 	public final int getDataSource() {
 		return dataSource;

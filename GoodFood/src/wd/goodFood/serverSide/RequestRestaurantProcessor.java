@@ -125,15 +125,15 @@ public class RequestRestaurantProcessor {
 			//output based on pretty
 			if(pretty){
 				Gson gson = new GsonBuilder().setPrettyPrinting().create();
-				jsonStr = gson.toJson(bizDatas);			
+				jsonStr = gson.toJson(bizDatas.get(0));			
 			}else{
 				Gson gson = new Gson();
-				jsonStr = gson.toJson(bizDatas);
+				jsonStr = gson.toJson(bizDatas.get(0));
 			}	
 			
 		}
 //		System.out.println(jsonStr);
-		return "{\"places\":" + jsonStr + "}"; 
+		return jsonStr; 
 	}
 	
 	//may not be a good practice; what if new version of json request?

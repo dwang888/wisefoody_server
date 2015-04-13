@@ -14,13 +14,15 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Random;
 
+import wd.goodFood.entity.Business;
+
 import com.google.gson.JsonObject;
 
 /**
  * a wrapper of testers
  * */
-public class Tester {
-	public Tester(){
+public class FoodScraper {
+	public FoodScraper(){
 		
 		
 		
@@ -72,12 +74,12 @@ public class Tester {
 	
 	public Location generateRandom(Location center){
 //		return this.generateRandom(new Location(center.lat+0.005, center.lon-0.005), new Location(center.lat-0.005, center.lon+0.005));
-		return this.generateRandom(new Location(center.lat+0.15, center.lon-0.15), new Location(center.lat-0.15, center.lon+0.15));
+		return this.generateRandom(new Location(center.lat+0.3, center.lon-0.3), new Location(center.lat-0.3, center.lon+0.3));
 	}
 
 	
 	public String sendRequest(Location loc){
-		String u = "http://192.241.173.181:8080/where?lat=" + loc.lat + "&lon=" + loc.lon + "&callback=?";
+		String u = "http://192.241.173.181:8080/foodupdate/where?lat=" + loc.lat + "&lon=" + loc.lon + "&callback=?";
 //		String u = "http://127.0.0.1:8080/where?lat=" + loc.lat + "&lon=" + loc.lon + "&callback=?";
 		
 		URL url;
@@ -108,34 +110,7 @@ public class Tester {
 		return sb.toString();		
 	}
 	
-	public void runByCityCenter(){
-		List<Location> locations = null;
-		try {
-//			locations = this.loadLatLonList("data\\latlon.txt");
-			locations = this.loadBigCityLatLon("data\\bigCities.txt");
-		} catch (NumberFormatException e1) {
-			e1.printStackTrace();
-		} catch (IOException e1) {
-			e1.printStackTrace();
-		}
-		System.out.println(locations.size() + "\tlocations got!!!");
-		int j = 1;
-		for(Location center : locations){			
-			System.out.println(j + "\t locations processed");
-			for(int i = 0; i < 20; i++){
-				this.sendRequest(this.generateRandom(center));
-				Random r = new Random();
-				try {
-					Thread.sleep((long) (r.nextFloat()*5000));
-				} catch (InterruptedException e) {
-					// TODO Auto-generated catch block
-					e.printStackTrace();
-				}
-			}
-			j++;
-		}
-		
-	}
+	
 	
 	public List<Location> loadLatLonList(String filePath) throws NumberFormatException, IOException{
 		List<Location> locations = new LinkedList<Location>();
@@ -191,7 +166,7 @@ public class Tester {
 			double lon = Float.valueOf(lonStr) * -1;
 						
 			locations.add(new Location(lat, lon));
-			System.out.println(lat + "\t" + lon);
+//			System.out.println(lat + "\t" + lon);
 		}
 		
 		return locations;
@@ -217,9 +192,49 @@ public class Tester {
 //		Location loc2 = new Location(39.6141019893, -121.395812287);		
 	}
 	
+	public void runByCityCenter(){
+		List<Location> locations = null;
+		FourSquareUpdater processor = null;
+		
+		try {
+			processor = new FourSquareUpdater("etc/goodfood.properties");
+//			locations = this.loadLatLonList("data\\latlon.txt");
+			locations = this.loadBigCityLatLon("data\\bigCities.txt");
+		} catch (NumberFormatException e1) {
+			e1.printStackTrace();
+		} catch (IOException e1) {
+			e1.printStackTrace();
+		} catch (Exception e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		System.out.println(locations.size() + "\tlocations got!!!");
+		int j = 0;
+		for(Location center : locations){
+			j++;
+//			if(j<=150)continue;
+			System.out.println(j + "\t big cities processed");
+			for(int i = 0; i < 50; i++){
+//				this.sendRequest(this.generateRandom(center));
+				Location loc = this.generateRandom(center);
+				List<Business> bizs = processor.updatePlaces(String.valueOf(loc.lat), String.valueOf(loc.lon));		
+				bizs = processor.fetchReviews(bizs);
+				Random r = new Random();
+				try {
+					Thread.sleep((long) (r.nextFloat()*3000));
+				} catch (InterruptedException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+			}
+			
+		}
+		
+	}
+	
 	public static void main(String[] args) {
 		// TODO Auto-generated method stub
-		Tester tester = new Tester();
+		FoodScraper tester = new FoodScraper();
 //		double[] upLeft = {-34.35745687f, 87.3463456f};
 //		double[] downRight = {94.254f, 128f};
 //		tester.generateRandom(upLeft, downRight);

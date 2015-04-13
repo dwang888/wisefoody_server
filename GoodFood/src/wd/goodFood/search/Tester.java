@@ -15,16 +15,19 @@ import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.action.search.SearchType;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.client.transport.TransportClient;
+import org.elasticsearch.common.geo.GeoDistance;
 import org.elasticsearch.common.settings.ImmutableSettings;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.transport.InetSocketTransportAddress;
+import org.elasticsearch.common.unit.DistanceUnit;
 import org.elasticsearch.common.xcontent.XContentBuilder;
-import org.elasticsearch.index.query.FilterBuilders;
+import org.elasticsearch.index.query.FilterBuilder;
+import org.elasticsearch.index.query.QueryBuilder;
 import org.elasticsearch.index.query.QueryBuilders;
-import org.elasticsearch.index.query.FilterBuilders.*;
-import org.elasticsearch.index.query.QueryBuilders.*;
 import org.elasticsearch.search.SearchHit;
 
+import static org.elasticsearch.index.query.QueryBuilders.*;
+import static org.elasticsearch.index.query.FilterBuilders.*;
 import wd.goodFood.entity.Business;
 import wd.goodFood.utils.DBConnector;
 
@@ -46,13 +49,13 @@ public class Tester {
 		client = new TransportClient(settings);
 //		client = new TransportClient();
 		System.out.println("adding hostname and port");
-		client.addTransportAddress(new InetSocketTransportAddress("107.170.18.102", 9300));
+		client.addTransportAddress(new InetSocketTransportAddress("192.241.173.181", 9300));
 		
 		
 		
 		System.out.println("client is " +  client.settings().toString());
-		SearchResponse response = client.prepareSearch("goodfood")
-		        .setTypes("goodfood_biz")
+		SearchResponse response = client.prepareSearch("wisefoody")
+		        .setTypes("restaurant")
 		        .setSearchType(SearchType.QUERY_AND_FETCH)
 //		        .setQuery(QueryBuilders.termQuery("bizName", "laobeifang"))             // Query
 		        .setQuery(QueryBuilders.termQuery("user", "kimchy"))             // Query
@@ -71,23 +74,73 @@ public class Tester {
 //			}
 	}
 	
+	public void searchViaAPI(){
+		
+		FilterBuilder filter = geoDistanceFilter("pin.location")    
+			    .point(33.652956, -86.822643)                                         
+			    .distance(20, DistanceUnit.KILOMETERS)                 
+			    .optimizeBbox("memory")
+			    .geoDistance(GeoDistance.ARC)
+			    ;
+		QueryBuilder queryBuilder = 
+				QueryBuilders.filteredQuery(QueryBuilders.queryString("coffee"), 
+						filter); 
+		
+		Settings settings = ImmutableSettings.settingsBuilder()
+		        .put("cluster.name", "elasticsearch")
+		        .build();
+		
+//		TransportClient client;
+//		client = new TransportClient(settings);
+//		//	client = new TransportClient();
+//		System.out.println("adding hostname and port");
+//		client.addTransportAddress(new InetSocketTransportAddress("192.241.173.181", 9300));
+		Client client = new TransportClient().addTransportAddress(new InetSocketTransportAddress("192.241.173.181", 9300));
+//		System.out.println(client.toString());
+	
+		SearchResponse response = client.prepareSearch("wisefoody")
+		        .setTypes("restaurant")
+		        .setSearchType(SearchType.QUERY_AND_FETCH)
+	//	        .setQuery(QueryBuilders.termQuery("bizName", "laobeifang"))             // Query
+//		        .setQuery(QueryBuilders.termQuery("user", "kimchy"))             // Query
+		        .setQuery(queryBuilder)
+		        .setPostFilter(filter)   // Filter
+	//	        .setFrom(0).setSize(60).setExplain(true)
+		        .execute()
+		        .actionGet();
+		SearchHit[] results = response.getHits().getHits();
+		System.out.println("size is " +  results.length); 
+	    client.close();
+	//	System.out.println(response.getHeaders());
+	//	for (SearchHit hit : results) {
+	//		System.out.println("------------------------------");
+	//		Map<String,Object> result = hit.getSource();
+	//		System.out.println(result);
+	//		}
+	    client.close();
+		
+	}
+	
+	
+	
+	
+	
 	public void searchViaJson(){
 		StringBuilder sb = new StringBuilder();  
 
-		String urlStr = "http://107.170.18.102:9200/goodfood/goodfood_biz/_search";
+		String urlStr = "http://192.241.173.181:9200/wisefoody/_search";
 		System.out.println(urlStr);
 		XContentBuilder builder;
 		try {
 			builder = jsonBuilder()
 				    .startObject()
 //			        .field("id", )
-				        .field("bizName", "laobeifang")			        
+				    .field("bizName", "laobeifang")			        
 				    .endObject();
 			String jsonStr = builder.string();
 			
 			jsonStr = "{\"query\":{\"filtered\":{\"query\":{\"match_all\":{}},\"filter\":{\"geo_distance\":" +
-					"{\"distance\":\"10km\", \"goodfood_biz.location\":{\"lat\":41.435465997926," +
-					"\"lon\":-76.928028553348}}}}}}";
+					"{\"distance\":\"10km\", \"restaurant.location\":\"33.652956,-86.822643\"}}}}}";
 			System.out.println(jsonStr);
 			
 			URL url = new URL(urlStr);
@@ -100,9 +153,9 @@ public class Tester {
 			urlconn.connect();
 			OutputStreamWriter out = new OutputStreamWriter(urlconn.getOutputStream());
 			out.write(jsonStr);
-			out.close();
-			
+			out.close();			
 			int HttpResult =urlconn.getResponseCode();
+			
 			if(HttpResult ==HttpURLConnection.HTTP_OK){  
 		        BufferedReader br = new BufferedReader(new InputStreamReader(  
 		        		urlconn.getInputStream(),"utf-8"));  
@@ -129,8 +182,7 @@ public class Tester {
 					JsonObject loc = (JsonObject)location;
 					Business biz = new Business();
 					biz = addInfo2Biz(loc.getAsJsonObject("_source"), biz);
-//					System.out.println(biz);
-//					System.out.println(biz);
+					System.out.println(biz);
 				}			
 		        
 		        
@@ -195,8 +247,9 @@ public class Tester {
 		// TODO Auto-generated method stub
 		Tester tester = new Tester();
 		System.out.println("Hello world" + tester.getClass());
-		tester.searchES();
-//		tester.searchViaJson();
+//		tester.searchES();
+		tester.searchViaJson();
+//		tester.searchViaAPI();
 	}
 
 }

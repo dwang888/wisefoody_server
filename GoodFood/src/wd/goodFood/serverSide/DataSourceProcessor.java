@@ -9,6 +9,7 @@ import java.sql.Timestamp;
 import java.util.List;
 import java.util.Set;
 import java.util.Map.Entry;
+import java.util.zip.CRC32;
 
 import wd.goodFood.entity.Business;
 import wd.goodFood.entity.Review;
@@ -191,9 +192,11 @@ public class DataSourceProcessor implements InfoProcessor{
 	 * store business reviews to DB, as cache
 	 * */
 	public void addReviews2DB(Business biz, Connection conn, PreparedStatement ps){
-//		System.out.println("calling this method!!!");
+		System.out.println(biz.getBusiness_id());
 //		Connection conn = null;
-//		PreparedStatement ps =null;		
+//		PreparedStatement ps =null;	
+		CRC32 crc = new CRC32();
+		
 		try {
 //			conn = GoodFoodServlet.ds.getConnection();
 //			ps = conn.prepareStatement(this.INSERT_reviews);
@@ -208,7 +211,8 @@ public class DataSourceProcessor implements InfoProcessor{
 				ps.setInt(7, r.getDataSource());
 				ps.setTimestamp(8, new Timestamp(System.currentTimeMillis()));
 				ps.setTimestamp(9, new Timestamp(System.currentTimeMillis()));
-//				ps.setTimestamp(10, new Timestamp(System.currentTimeMillis()));		
+				crc.update(r.getReviewStr().getBytes());
+				ps.setLong(10, crc.getValue());		
 				ps.executeUpdate();
 			}			
 		} catch (SQLException e) {

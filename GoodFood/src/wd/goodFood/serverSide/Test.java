@@ -11,6 +11,8 @@ import java.net.URL;
 import java.sql.Timestamp;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
+import java.util.UUID;
+import java.util.zip.CRC32;
 
 import net.sf.json.JSONObject;
 import net.sf.json.JSONSerializer;
@@ -232,16 +234,30 @@ public class Test {
 	
 	public static void main(String[] args) throws IOException {
 		// TODO Auto-generated method stub
-		Test t = new Test();
-//		t.testResponse();
-		Calendar calendar = Calendar.getInstance();
-		calendar.add(Calendar.MONTH, -1);
-		Timestamp pastTime = new Timestamp(calendar.getTimeInMillis());
+//		Test t = new Test();
+////		t.testResponse();
+//		Calendar calendar = Calendar.getInstance();
+//		calendar.add(Calendar.MONTH, -1);
+//		Timestamp pastTime = new Timestamp(calendar.getTimeInMillis());
+//		
+//		Timestamp curTime = new Timestamp(System.currentTimeMillis());
+//		
+////		System.out.println(pastTime.before(curTime));
+//		t.testJson2();
 		
-		Timestamp curTime = new Timestamp(System.currentTimeMillis());
+		UUID idOne = UUID.randomUUID();
+		System.out.println(idOne.toString());
 		
-//		System.out.println(pastTime.before(curTime));
-		t.testJson2();
+		System.out.println("test");
+		String s = "Best NYC restaurant! Best kosher meal! Love it!";
+		CRC32 crc = new CRC32();
+	    crc.update(s.getBytes());
+	    System.out.println(crc.getValue());
+	    
+	    Long a[] = new Long[]{(long) 0,(long) 1,(long) 2,(long) 3,(long) 4,(long) 5};
+	    Integer b[] = new Integer[]{0,1,2,3,4,5};
+	    a[5] = a[5]++;
+	    System.out.println(a[5]);
 	}
 
 }

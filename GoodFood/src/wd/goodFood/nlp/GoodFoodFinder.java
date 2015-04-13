@@ -55,6 +55,7 @@ public class GoodFoodFinder {
 //			this.tokenizer = WhitespaceTokenizer.INSTANCE;
 //			this.setPosTagger(this.initializePOSTagger(POSPath));
 			this.NETagger = this.initiateNETagger(NETaggerPath);
+//			this.stanfordPipeline = this.initStanfordNLP();
 		} catch (InvalidFormatException e) {
 			e.printStackTrace();
 		} catch (IOException e) {
@@ -105,6 +106,7 @@ public class GoodFoodFinder {
 			List<String[]> tokenizedSents = new ArrayList<String[]>();
 			s = System.currentTimeMillis();
 			Annotation document = new Annotation(r.getReviewStr());
+//			System.out.println(this.stanfordPipeline);
 			this.stanfordPipeline.annotate(document);
 			List<CoreMap> sentences = document.get(SentencesAnnotation.class);
 			for(CoreMap sentence: sentences) {

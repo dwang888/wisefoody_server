@@ -21,11 +21,14 @@ import wd.goodFood.serverSide.InfoProcessor;
 import wd.goodFood.utils.Configuration;
 import wd.goodFood.utils.EntityProcessor;
 
-public class RequestProcessor {
+/**
+ * to handle update request from client; mainly for scraping: fetch business and food info, write into DB
+ * */
+public class UpdateProcessor {
 	private Configuration config;
-	CityGridInfoProcessor cityGridProcessor;
+//	CityGridInfoProcessor cityGridProcessor;
 	FourSquareInfoProcessor fourSquareInfoProcessor;
-	SearchEngineInfoProcessor searchEngineInfoProcessor;
+//	SearchEngineInfoProcessor searchEngineInfoProcessor;
 //	GoogleInfoProcessor googleInfoProcessor;
 	Gson gson = new Gson();
 	
@@ -38,10 +41,9 @@ public class RequestProcessor {
 		DishAndBusiness(List<BusinessData> bizDatas){
 			dishes = new LinkedList<FoodData>();
 			businesses = new LinkedList<BusinessData>();
-			int threshold = bizDatas.size()<10? 2 : 4;
 			for(BusinessData biz : bizDatas){
 				for(FoodData food:biz.foods){
-					if(food.reviews.size() >= threshold){//to eliminate food which has too few reviews
+					if(food.reviews.size() > 3){//to eliminate food which has too few reviews
 						dishes.add(food);
 					}
 				}
@@ -60,29 +62,29 @@ public class RequestProcessor {
 //		}
 	}
 	
-	public RequestProcessor(String pathConfig) throws Exception{
+	public UpdateProcessor(String pathConfig) throws Exception{
 		this.config = new Configuration(pathConfig);
 //		this.finder = new GoodFoodFinder(config.getValue("sentSplitterPath"), 
 //				config.getValue("tokenizerPath"), 
 //				config.getValue("NETaggerPath"));
 		this.finder = new GoodFoodFinder(config.getValue("NETaggerPath"));
-		cityGridProcessor = new CityGridInfoProcessor(pathConfig, this.finder);
+//		cityGridProcessor = new CityGridInfoProcessor(pathConfig, this.finder);
 		fourSquareInfoProcessor = new FourSquareInfoProcessor(pathConfig, this.finder);
 //		googleInfoProcessor = new GoogleInfoProcessor(pathConfig, this.finder);
-		searchEngineInfoProcessor = new SearchEngineInfoProcessor(pathConfig, this.finder);
+//		searchEngineInfoProcessor = new SearchEngineInfoProcessor(pathConfig, this.finder);
 	}
 
 	
 	public String callProcessors(HttpServletRequest req){
 		String lat = req.getParameter("lat");
         String lon = req.getParameter("lon");
-        String keywords = req.getParameter("keywords");
-        Boolean pretty = Boolean.parseBoolean(req.getParameter("pretty"));
-        String version = req.getParameter("version");
+//        String keywords = req.getParameter("keywords");
+//        Boolean pretty = Boolean.parseBoolean(req.getParameter("pretty"));
+//        String version = req.getParameter("version");
         
         List<InfoProcessor> processors = new ArrayList<InfoProcessor>();
         List<List<Business>> bizMatrix = new ArrayList<List<Business>>();
-		processors.add(this.cityGridProcessor);
+//		processors.add(this.cityGridProcessor);
 		processors.add(this.fourSquareInfoProcessor);
 //		processors.add(this.googleInfoProcessor);
 //		processors.add(this.searchEngineInfoProcessor);
@@ -90,8 +92,8 @@ public class RequestProcessor {
 		for(InfoProcessor processor : processors){
 			//call each processor to fetch info
 			List<Business> bizsTmp = processor.fetchPlaces(lat, lon);
-			processor.fetchReviews(bizsTmp);			
-			processor.addDBTableName(bizsTmp);
+			bizsTmp = processor.fetchReviews(bizsTmp);			
+//			processor.addDBTableName(bizsTmp);
 			bizMatrix.add(bizsTmp);
 		}
         
@@ -101,12 +103,8 @@ public class RequestProcessor {
 		
 		for(Iterator<Business> itr = bizs.iterator(); itr.hasNext();){
 			Business biz = itr.next();
-			if(keywords == null || keywords.equalsIgnoreCase("")){
-				//when no search function is called
-				biz.extractInfoFromReviews();
-			}else{
-				biz.extractInfoFromReviews(keywords);
-			}
+			
+			biz.extractInfoFromReviews();			
 			
 			postProcessor.removeGeneralFood(biz);//remove general food name
 			//remove biz without reviews
@@ -119,40 +117,55 @@ public class RequestProcessor {
 		}
 		
 		String jsonStr = null;
-		
-		//TODO ugly code, should be changed
-		if(version == null || version.equals("")||version.equalsIgnoreCase("1")){
-//			System.out.println("version 1 is called");
-			//output based on pretty
-			if(pretty){
-				Gson gson = new GsonBuilder().setPrettyPrinting().create();
-				jsonStr = gson.toJson(bizDatas);			
-			}else{
-				Gson gson = new Gson();
-				jsonStr = gson.toJson(bizDatas);
-			}	
-			
-		}else if(version.equalsIgnoreCase("2")){
-//			System.out.println("version 2 is called!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
-			//output for version 2: dishes list and restaurants list
-			if(pretty){
-				Gson gson = new GsonBuilder().setPrettyPrinting().create();
-				jsonStr = gson.toJson(new DishAndBusiness(bizDatas));			
-			}else{
-				Gson gson = new Gson();
-				jsonStr = gson.toJson(new DishAndBusiness(bizDatas));
-			}
-			return jsonStr;
-		}		
+
+		Gson gson = new GsonBuilder().setPrettyPrinting().create();
+		jsonStr = gson.toJson(bizDatas);			
+
+
 //		System.out.println(jsonStr);
 		return "{\"places\":" + jsonStr + "}"; 
+	}
+	
+	public String callProcessors(String lat, String lon){
+        
+        List<DataSourceProcessor> processors = new ArrayList<DataSourceProcessor>();
+        List<List<Business>> bizMatrix = new ArrayList<List<Business>>();
+//		processors.add(this.cityGridProcessor);
+		processors.add(this.fourSquareInfoProcessor);
+//		processors.add(this.googleInfoProcessor);
+//		processors.add(this.searchEngineInfoProcessor);
+		
+//		for(InfoProcessor processor : processors){
+//			//call each processor to fetch info
+//			List<Business> bizsTmp = processor.fetchPlaces(lat, lon);
+//			bizsTmp = processor.updatePlaces(lat, lon);			
+////			processor.addDBTableName(bizsTmp);
+//			bizMatrix.add(bizsTmp);
+//		}
+		
+		List<Business> bizsTmp = this.fourSquareInfoProcessor.updatePlaces(lat, lon);	
+		bizMatrix.add(bizsTmp);
+		
+		PostProcessor postProcessor = new PostProcessor();
+		List<Business> bizs = postProcessor.removeDuplicateBiz(bizMatrix);
+		
+		for(Iterator<Business> itr = bizs.iterator(); itr.hasNext();){
+			Business biz = itr.next();			
+			biz.extractInfoFromReviews();
+			
+		}
+		
+//		System.out.println(jsonStr);
+//		return "{\"places\":" + jsonStr + "}"; 
+		return null;
 	}
 	
 	//may not be a good practice; what if new version of json request?
 	public DishAndBusiness getDishAndBusinessList(List<BusinessData> bizDatas){
 		return new DishAndBusiness(bizDatas);
 	}
-
+	
+	
 
 	
 	public final Configuration getConfig() {
@@ -197,35 +210,10 @@ public class RequestProcessor {
 		locations.add(new String[]{"37.6141019893", "-122.395812287"});
 		locations.add(new String[]{"33.9388100309", "-118.402768344"});
 		locations.add(new String[]{"40.6929648399", "-74.1845529215"});
-		locations.add(new String[]{"39.1792298757", "-76.6744909797"});
-		locations.add(new String[]{"37.6141019893", "-122.395812287"});
-		locations.add(new String[]{"33.9388100309", "-118.402768344"});
-		locations.add(new String[]{"40.6929648399", "-74.1845529215"});
-		locations.add(new String[]{"39.1792298757", "-76.6744909797"});
-		locations.add(new String[]{"37.6141019893", "-122.395812287"});
-		locations.add(new String[]{"33.9388100309", "-118.402768344"});
-		locations.add(new String[]{"40.6929648399", "-74.1845529215"});
-		locations.add(new String[]{"39.1792298757", "-76.6744909797"});
-		locations.add(new String[]{"37.6141019893", "-122.395812287"});
-		locations.add(new String[]{"33.9388100309", "-118.402768344"});
-		locations.add(new String[]{"40.6929648399", "-74.1845529215"});
-		locations.add(new String[]{"39.1792298757", "-76.6744909797"});
-		locations.add(new String[]{"37.6141019893", "-122.395812287"});
-		locations.add(new String[]{"33.9388100309", "-118.402768344"});
-		locations.add(new String[]{"40.6929648399", "-74.1845529215"});
-		locations.add(new String[]{"39.1792298757", "-76.6744909797"});
-		locations.add(new String[]{"37.6141019893", "-122.395812287"});
-		locations.add(new String[]{"33.9388100309", "-118.402768344"});
-		locations.add(new String[]{"40.6929648399", "-74.1845529215"});
-		locations.add(new String[]{"39.1792298757", "-76.6744909797"});
-		locations.add(new String[]{"37.6141019893", "-122.395812287"});
-		locations.add(new String[]{"33.9388100309", "-118.402768344"});
-		locations.add(new String[]{"40.6929648399", "-74.1845529215"});
-		locations.add(new String[]{"39.1792298757", "-76.6744909797"});
-		RequestProcessor handler = new RequestProcessor(args[0]);
+		UpdateProcessor handler = new UpdateProcessor(args[0]);
 		for(String[] loc : locations){
 			long startTime = System.currentTimeMillis();
-//			handler.callProcessors(loc[0], loc[1]);
+			handler.callProcessors(loc[0], loc[1]);
 			long endTime = System.currentTimeMillis();
 			System.out.println("running time:\t" + ( endTime - startTime));
 		}

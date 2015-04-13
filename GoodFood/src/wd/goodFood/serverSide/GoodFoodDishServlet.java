@@ -16,13 +16,13 @@ import wd.goodFood.utils.Configuration;
 //import wd.goodFood.utils.DBConnector;
 
 //handle API for restaurant info
-public class GoodFoodRestaurantServlet extends HttpServlet {
+public class GoodFoodDishServlet extends HttpServlet {
 	private Configuration config;
-	private RequestRestaurantProcessor processor;
+	private RequestDishProcessor processor;//TODO: should be a more generic type?
 //	private String pathConfig = "etc/goodfood.properties";
 	private String pathConfig = GoodFoodXMLServer.pathServletConfig;
     private static final long serialVersionUID = 4L;
-    public static final Logger logger = Logger.getLogger(GoodFoodRestaurantServlet.class.getName());
+    public static final Logger logger = Logger.getLogger(GoodFoodDishServlet.class.getName());
     public static InitialContext IC;
     public static BasicDataSource DS;
     
@@ -45,7 +45,8 @@ public class GoodFoodRestaurantServlet extends HttpServlet {
 			this.config = new Configuration(pathConfig);
 			IC = new InitialContext();
 			DS = (BasicDataSource)IC.lookup("jdbc/DSDB");
-			this.processor = new RequestRestaurantProcessor(pathConfig);		
+//			this.processor = new RequestDishProcessor(pathConfig);
+			this.processor = new RequestDishProcessor();	
 		} catch (NamingException e) {
 			logger.info("Can't find the naming resource -> DB pooling!!!");
 			e.printStackTrace();

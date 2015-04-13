@@ -98,7 +98,7 @@ public class PostProcessor {
 			return null;
 		}
 		if(bizsGroup.size() == 1){
-			return bizsGroup.get(0);
+			return bizsGroup;
 		}
 		List<Business> uniqueBizs = new ArrayList<Business>();
 		

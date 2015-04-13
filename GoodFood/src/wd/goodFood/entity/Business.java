@@ -20,7 +20,7 @@ import opennlp.tools.util.Span;
  * */
 public class Business {
 
-	private String business_id;
+	private String business_id;//id from third party data source
 	private int business_dbid;
 	private String business_name;
 	private String business_address;
