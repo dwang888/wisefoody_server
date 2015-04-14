@@ -66,8 +66,8 @@ public class RequestProcessor {
 //				config.getValue("tokenizerPath"), 
 //				config.getValue("NETaggerPath"));
 		this.finder = new GoodFoodFinder(config.getValue("NETaggerPath"));
-		cityGridProcessor = new CityGridInfoProcessor(pathConfig, this.finder);
-		fourSquareInfoProcessor = new FourSquareInfoProcessor(pathConfig, this.finder);
+//		cityGridProcessor = new CityGridInfoProcessor(pathConfig, this.finder);
+//		fourSquareInfoProcessor = new FourSquareInfoProcessor(pathConfig, this.finder);
 //		googleInfoProcessor = new GoogleInfoProcessor(pathConfig, this.finder);
 		searchEngineInfoProcessor = new SearchEngineInfoProcessor(pathConfig, this.finder);
 	}
@@ -82,10 +82,10 @@ public class RequestProcessor {
         
         List<InfoProcessor> processors = new ArrayList<InfoProcessor>();
         List<List<Business>> bizMatrix = new ArrayList<List<Business>>();
-		processors.add(this.cityGridProcessor);
-		processors.add(this.fourSquareInfoProcessor);
+//		processors.add(this.cityGridProcessor);
+//		processors.add(this.fourSquareInfoProcessor);
 //		processors.add(this.googleInfoProcessor);
-//		processors.add(this.searchEngineInfoProcessor);
+		processors.add(this.searchEngineInfoProcessor);
 		
 		for(InfoProcessor processor : processors){
 			//call each processor to fetch info

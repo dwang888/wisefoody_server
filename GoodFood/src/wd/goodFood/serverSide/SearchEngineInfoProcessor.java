@@ -155,6 +155,17 @@ public class SearchEngineInfoProcessor extends DataSourceProcessor{
 		return biz;
 	}
 	
+	public List<Business> addDBTableName(List<Business> bizs){
+		for(Business biz : bizs){
+			if(biz.getDataSource() == 1){
+				biz.setBusiness_id("goodfood_biz__" + biz.getBusiness_id());
+			}else if(biz.getDataSource() == 2){
+				biz.setBusiness_id("goodfood_biz_FourSquare__" + biz.getBusiness_id());
+			}			
+		}
+		return bizs;
+	}
+	
 	//fetch restaurants from search engine
 	public List<Business> fetchPlaces(String lat, String lon){
 		long startTime = System.currentTimeMillis();

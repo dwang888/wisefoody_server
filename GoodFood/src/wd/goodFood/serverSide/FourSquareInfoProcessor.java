@@ -570,6 +570,7 @@ public class FourSquareInfoProcessor extends DataSourceProcessor{
 	
 	public List<Business> addDBTableName(List<Business> bizs){
 		for(Business biz : bizs){
+//			biz.setBusiness_id(this.dbTableName + "__" + biz.getBusiness_id());
 			biz.setBusiness_id(this.dbTableName + "__" + biz.getBusiness_id());
 		}
 		return bizs;
