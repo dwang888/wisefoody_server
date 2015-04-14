@@ -74,6 +74,7 @@ public class RequestProcessor {
 
 	
 	public String callProcessors(HttpServletRequest req){
+//		System.out.println("fucking!!!");
 		String lat = req.getParameter("lat");
         String lon = req.getParameter("lon");
         String keywords = req.getParameter("keywords");
@@ -113,7 +114,7 @@ public class RequestProcessor {
 			if(biz.getGoodFoods() == null || biz.getGoodFoods().size() == 0){					
 				itr.remove();
 			}else{				
-				bizDatas.add(EntityProcessor.biz2JsonDataObj(biz));				
+				bizDatas.add(EntityProcessor.biz2JsonDataObj(biz));//convert Business to bizdata
 			}
 			
 		}
@@ -142,9 +143,10 @@ public class RequestProcessor {
 				Gson gson = new Gson();
 				jsonStr = gson.toJson(new DishAndBusiness(bizDatas));
 			}
+//			System.out.println(jsonStr);
 			return jsonStr;
 		}		
-//		System.out.println(jsonStr);
+//		System.out.println("shit" + jsonStr);
 		return "{\"places\":" + jsonStr + "}"; 
 	}
 	

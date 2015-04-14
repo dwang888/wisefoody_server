@@ -221,7 +221,7 @@ public class SearchEngineInfoProcessor extends DataSourceProcessor{
 		        JsonObject jobj= (JsonObject)jsonParser.parse(sb.toString());
 				
 				JsonArray locations = jobj.getAsJsonObject("hits").getAsJsonArray("hits");
-				System.out.println("\nnumber of locations:\t" + locations.size());
+				System.out.println("\nnumber of fuckingggggg locations:\t" + locations.size());
 				
 				for(JsonElement location : locations){
 					JsonObject loc = (JsonObject)location;
